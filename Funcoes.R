@@ -77,43 +77,45 @@ acao_local_join <- acao_local_join %>%
     DIA_CRIACAO_ACAO = day(DT_CRIACAO_ACAO),
     HORA_CRIACAO_ACAO = hour(DT_CRIACAO_ACAO),
     MINUTO_CRIACAO_ACAO = minute(DT_CRIACAO_ACAO),
-    IS_ORIGEM_APARTAMENTO = !is.na(ID_APARTAMENTO_ORIGEM)
+    IS_ORIGEM_APARTAMENTO = !is.na(ID_APARTAMENTO_ORIGEM),
+    IS_SEGUNDA_QUINZENA = day(DT_CRIACAO_ACAO)>=15,
   )
-acao_local_join <- select(acao_local_join, -c(DT_FINALIZACAO_ACAO, STATUS_ACAO, TIPO_ACAO, ID_APARTAMENTO_ORIGEM, ID_RUA_ORIGEM))
+acao_local_join <- select(acao_local_join, -c(DT_FINALIZACAO_ACAO, STATUS_ACAO,
+                                              TIPO_ACAO, ID_APARTAMENTO_ORIGEM, 
+                                              ID_RUA_ORIGEM)
+                          )
 
 acao_teste <- acao_local_join %>%
   group_by(ID_OBJETO, ID_USUARIO, MES_CRIACAO_ACAO, DIA_CRIACAO_ACAO) %>%
   mutate(
-    LIMITE_10_ACOES_DIA=n()>=10,
-    LIMITE_50_ACOES_DIA=n()>=50,
+    LIMITE_10_ACOES_DIA=n()>=10
   ) %>%
   ungroup() %>%
-  group_by(ID_OBJETO, ID_USUARIO, MES_CRIACAO_ACAO, DIA_CRIACAO_ACAO, HORA_CRIACAO_ACAO) %>%
+  group_by(ID_OBJETO, ID_USUARIO, MES_CRIACAO_ACAO, DIA_CRIACAO_ACAO,
+           HORA_CRIACAO_ACAO) %>%
   mutate(
-    LIMITE_2_ACOES_HORA=n()>=2,
-    LIMITE_10_ACOES_HORA=n()>=10
+    LIMITE_5_ACOES_HORA=n()>=5,
   ) %>%
   ungroup() %>%
-  group_by(ID_OBJETO, ID_USUARIO, MES_CRIACAO_ACAO, DIA_CRIACAO_ACAO, ID_APARTAMENTO_DESTINO) %>%
+  group_by(ID_OBJETO, ID_USUARIO, MES_CRIACAO_ACAO, DIA_CRIACAO_ACAO,
+           ID_APARTAMENTO_DESTINO) %>%
   mutate(
-    LIMITE_10_ACOES_DIA_APARTAMENTO=n()>=10,
     LIMITE_20_ACOES_DIA_APARTAMENTO=n()>=20
   ) %>%
   ungroup()
 
 
+
 teste <- acao_teste %>%
-  select (IS_ORIGEM_APARTAMENTO, LIMITE_10_ACOES_DIA, LIMITE_50_ACOES_DIA, LIMITE_2_ACOES_HORA, LIMITE_10_ACOES_HORA,
-          LIMITE_10_ACOES_DIA_APARTAMENTO, LIMITE_20_ACOES_DIA_APARTAMENTO
+  select (IS_ORIGEM_APARTAMENTO, LIMITE_10_ACOES_DIA, LIMITE_5_ACOES_HORA,
+         LIMITE_20_ACOES_DIA_APARTAMENTO, IS_SEGUNDA_QUINZENA
   ) %>%
   mutate(
     IS_ORIGEM_APARTAMENTO = as.factor(IS_ORIGEM_APARTAMENTO),
     LIMITE_10_ACOES_DIA = as.factor(LIMITE_10_ACOES_DIA),
-    LIMITE_50_ACOES_DIA = as.factor(LIMITE_50_ACOES_DIA),
-    LIMITE_2_ACOES_HORA = as.factor(LIMITE_2_ACOES_HORA),
-    LIMITE_10_ACOES_HORA = as.factor(LIMITE_10_ACOES_HORA),
-    LIMITE_10_ACOES_DIA_APARTAMENTO = as.factor(LIMITE_10_ACOES_DIA_APARTAMENTO),
-    LIMITE_20_ACOES_DIA_APARTAMENTO = as.factor(LIMITE_20_ACOES_DIA_APARTAMENTO)
+    LIMITE_5_ACOES_HORA = as.factor(LIMITE_5_ACOES_HORA),
+    LIMITE_20_ACOES_DIA_APARTAMENTO = as.factor(LIMITE_20_ACOES_DIA_APARTAMENTO),
+    IS_SEGUNDA_QUINZENA = as.factor(IS_SEGUNDA_QUINZENA)
   )
 
 
@@ -131,10 +133,12 @@ set.seed(127630)
   sample(nrow(teste), replace = T) %>%
   split(teste, .)
 
+
 rtree_fit <- rpart(LIMITE_20_ACOES_DIA_APARTAMENTO  ~ ., 
                    .data$training
 )
 
 rpart.plot(rtree_fit)   
 
+summary(rtree_fit)
 
